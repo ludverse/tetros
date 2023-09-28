@@ -4,7 +4,8 @@ use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::render::{Canvas, RenderTarget};
-use tetris_rs::{BLOCK_SIZE, GAME_WIDTH, GAME_HEIGHT, TetroType, Game, Cord, Pos, GameTetro};
+use tetris_rs::{Game, Cord, Pos, BLOCK_SIZE, GAME_WIDTH, GAME_HEIGHT};
+use tetris_rs::tetros::{TetroType, GameTetro};
 
 fn main() {
     let sdl_context = sdl2::init().unwrap();
@@ -28,11 +29,11 @@ fn main() {
         let now = Instant::now();
         let delta_last_down = now - last_down;
 
-        if delta_last_down.as_millis() > (if keys_down.contains(&Keycode::S) { 75 } else { 750 }) {
+        if delta_last_down.as_millis() > (if keys_down.contains(&Keycode::S) { 50 } else { 750 }) {
             let mut next_cord = game.dropping_tetro.cord;
             next_cord.1 += 1;
 
-            if next_cord.is_outside_game(game.dropping_tetro.tetro_type, game.dropping_tetro.rotation) {
+            if game.is_tetro_colliding(game.dropping_tetro.tetro_type, next_cord, game.dropping_tetro.rotation) {
                 game.petrify_dropping_tetro();
                 game.next_tetro();
             } else {
@@ -55,7 +56,10 @@ fn main() {
                     break 'running
                 },
                 Event::KeyDown { keycode: Some(keycode), .. } => {
-                    keys_down.push(keycode);
+                    if !keys_down.contains(&keycode) {
+                        keys_down.push(keycode);
+                        dbg!(keycode);
+                    }
 
                     match keycode {
                         Keycode::Q => {
@@ -66,7 +70,7 @@ fn main() {
                                 next_rotation += 1;
                             }
 
-                            if !game.dropping_tetro.cord.is_outside_game(game.dropping_tetro.tetro_type, next_rotation) {
+                            if !game.is_tetro_colliding(game.dropping_tetro.tetro_type, game.dropping_tetro.cord, next_rotation) {
                                 game.dropping_tetro.rotation = next_rotation;
                             }
                         },
@@ -78,7 +82,7 @@ fn main() {
                                 next_rotation -= 1;
                             }
 
-                            if !game.dropping_tetro.cord.is_outside_game(game.dropping_tetro.tetro_type, next_rotation) {
+                            if !game.is_tetro_colliding(game.dropping_tetro.tetro_type, game.dropping_tetro.cord, next_rotation) {
                                 game.dropping_tetro.rotation = next_rotation;
                             }
                         },
@@ -86,7 +90,7 @@ fn main() {
                             let mut next_cord = game.dropping_tetro.cord;
                             next_cord.0 -= 1;
 
-                            if !next_cord.is_outside_game(game.dropping_tetro.tetro_type, game.dropping_tetro.rotation) {
+                            if !game.is_tetro_colliding(game.dropping_tetro.tetro_type, next_cord, game.dropping_tetro.rotation) {
                                 game.dropping_tetro.cord = next_cord;
                             }
                         },
@@ -94,7 +98,7 @@ fn main() {
                             let mut next_cord = game.dropping_tetro.cord;
                             next_cord.0 += 1;
 
-                            if !next_cord.is_outside_game(game.dropping_tetro.tetro_type, game.dropping_tetro.rotation) {
+                            if !game.is_tetro_colliding(game.dropping_tetro.tetro_type, next_cord, game.dropping_tetro.rotation) {
                                 game.dropping_tetro.cord = next_cord;
                             }
                         },
@@ -111,6 +115,14 @@ fn main() {
                             last_down = Instant::now();
 
                             game.dropping_tetro = GameTetro::new(tetro_type, Cord(2, 0), 0);
+                        },
+                        Keycode::Return => {
+                            let mut next_cord = game.dropping_tetro.cord;
+                            next_cord.1 = GAME_HEIGHT as i32 - game.dropping_tetro.tetro_type.shape_size();
+
+                            last_down = Instant::now();
+
+                            game.dropping_tetro.cord = next_cord;
                         },
                         _ => ()
                     };
