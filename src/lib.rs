@@ -12,21 +12,35 @@ pub const GAME_HEIGHT: u32 = 20;
 pub struct Cord(pub i32, pub i32);
 
 impl Cord {
-    pub fn pos(&self, game: &Game) -> Pos {
-        Pos(self.0 * BLOCK_SIZE as i32 + game.game_pos.0, self.1 * BLOCK_SIZE as i32 + game.game_pos.1)
+    pub fn pos(&self, game_pos: Pos) -> Pos {
+        Pos(self.0 * BLOCK_SIZE as i32 + game_pos.0, self.1 * BLOCK_SIZE as i32 + game_pos.1)
     }
 
-    pub fn is_outside_game(&self) -> bool {
-        self.0 < 0 ||
-        self.0 > GAME_WIDTH as i32
+    pub fn is_outside_game(&self, tetro_type: TetroType, rotation: usize) -> bool {
+        let shape = tetro_type.shape(rotation);
+        let shape_size = tetro_type.shape_size();
+
+        for i in 0..shape_size * shape_size {
+            let bit = shape >> i & 1;
+            if bit == 0 { continue }
+
+            let relative_cord = Cord(i as i32 % shape_size as i32, i as i32 / shape_size as i32);
+
+            let is_outside = self.0 + relative_cord.0 < 0 ||
+                self.0 + relative_cord.0 >= GAME_WIDTH as i32 ||
+                self.1 + relative_cord.1 >= GAME_HEIGHT as i32;
+
+            if is_outside {
+                return true;
+            }
+        }
+
+        false
     }
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct Pos(pub i32, pub i32);
-
-impl Pos {
-}
 
 #[derive(Copy, Clone, Debug)]
 pub enum TetroType {
@@ -40,60 +54,59 @@ pub enum TetroType {
 }
 
 impl TetroType {
-    pub fn shape(&self, rotation: usize) -> Vec<u8> {
-        let mut shape = match self {
-            TetroType::I => vec![
-                0,0,0,0,
-                1,1,1,1,
-                0,0,0,0,
-                0,0,0,0
-            ],
-            TetroType::J => vec![
-                1,0,0,
-                1,1,1,
-                0,0,0
-            ],
-            TetroType::L => vec![
-                0,0,1,
-                1,1,1,
-                0,0,0
-            ],
-            TetroType::O => vec![
-                1,1,
-                1,1
-            ],
-            TetroType::S => vec![
-                0,1,1,
-                1,1,0,
-                0,0,0
-            ],
-            TetroType::T => vec![
-                0,1,0,
-                1,1,1,
-                0,0,0
-            ],
-            TetroType::Z => vec![
-                1,1,0,
-                0,1,1,
-                0,0,0
-            ]
+    pub fn shape(&self, rotation: usize) -> u16 {
+        //let mut shape: u16 = match self {
+            //TetroType::I => 0b0000111100000000,
+            //TetroType::J => 0b100111000,
+            //TetroType::L => 0b001111000,
+            //TetroType::O => 0b1111,
+            //TetroType::S => 0b011110000,
+            //TetroType::T => 0b010111000,
+            //TetroType::Z => 0b110011000,
+        //};
+
+        let mut shape: u16 = match self {
+            TetroType::I => 00000000011110000,
+            TetroType::J => 0b000111001,
+            TetroType::L => 0b000111100,
+            TetroType::O => 0b1111,
+            TetroType::S => 0b000011110,
+            TetroType::T => 0b000111010,
+            TetroType::Z => 0b000110011
         };
 
-        let size = f64::sqrt(shape.len() as f64) as i32;
+        let size = self.shape_size();
 
         for _ in 0..rotation {
-            shape = shape.iter().enumerate().map(|(i, _)| {
+            let mut rotated = shape;
+
+            for i in 0..size * size {
+                let bit = shape >> i & 1;
+
                 let new_x = size - 1 - i as i32 / size;
                 let new_y = i as i32 % size;
-                shape[(new_x + new_y * size) as usize]
-            }).collect();
+
+                let new_pos = (new_x + new_y * size) as usize;
+
+                rotated = (rotated & !(1 << new_pos)) | (bit << new_pos);
+            }
+
+            shape = rotated;
         }
 
         shape
     }
 
     pub fn shape_size(&self) -> i32 {
-        f64::sqrt(self.shape(0).len() as f64) as i32
+        match self {
+            TetroType::I => 4,
+            TetroType::J => 3,
+            TetroType::L => 3,
+            TetroType::O => 2,
+            TetroType::S => 3,
+            TetroType::T => 3,
+            TetroType::Z => 3,
+        }
     }
 
     pub fn colour(&self) -> (Color, Color) {
@@ -102,27 +115,29 @@ impl TetroType {
             TetroType::J => (Color::RGB(75, 123, 236), Color::RGB(56, 103, 214)),
             TetroType::L => (Color::RGB(253, 150, 68), Color::RGB(250, 130, 49)),
             TetroType::O => (Color::RGB(254, 211, 48), Color::RGB(247, 183, 49)),
-            _ => (Color::RGB(38, 222, 129), Color::RGB(32, 191, 107)),
+            TetroType::S => (Color::RGB(38, 222, 129), Color::RGB(32, 191, 107)),
+            TetroType::T => (Color::RGB(165, 94, 234), Color::RGB(136, 84, 208)),
+            TetroType::Z => (Color::RGB(252, 92, 101), Color::RGB(235, 59, 90)),
         }
     }
 
     pub fn draw(&self, canvas: &mut Canvas<impl RenderTarget>, pos: Pos, rotation: usize) {
         let shape = self.shape(rotation);
-        let shape_size = (shape.len() as f64).sqrt() as i32;
+        let shape_size = self.shape_size();
 
         let border_size = BLOCK_SIZE / 10;
 
-        for (i, block) in shape.iter().enumerate() {
-            if *block == 0 { continue }
+        for i in 0..shape_size * shape_size {
+            let bit = shape >> i & 1;
+            if bit == 0 { continue }
 
-            let relative_x = i as i32 % shape_size * BLOCK_SIZE as i32;
-            let relative_y = i as i32 / shape_size * BLOCK_SIZE as i32;
+            let relative_cord = Cord(i as i32 % shape_size, i as i32 / shape_size);
 
             canvas.set_draw_color(self.colour().1);
-            canvas.fill_rect(Rect::new(pos.0 + relative_x, pos.1 + relative_y, BLOCK_SIZE, BLOCK_SIZE)).unwrap();
+            canvas.fill_rect(Rect::new(pos.0 + relative_cord.0 * BLOCK_SIZE as i32, pos.1 + relative_cord.1 * BLOCK_SIZE as i32, BLOCK_SIZE, BLOCK_SIZE)).unwrap();
 
             canvas.set_draw_color(self.colour().0);
-            canvas.fill_rect(Rect::new(pos.0 + relative_x + border_size as i32, pos.1 + relative_y + border_size as i32, BLOCK_SIZE - border_size * 2, BLOCK_SIZE - border_size * 2)).unwrap();
+            canvas.fill_rect(Rect::new(pos.0 + relative_cord.0 * BLOCK_SIZE as i32 + border_size as i32, pos.1 + relative_cord.1 * BLOCK_SIZE as i32 + border_size as i32, BLOCK_SIZE - border_size * 2, BLOCK_SIZE - border_size * 2)).unwrap();
         }
     }
 
@@ -168,7 +183,7 @@ impl GameTetro {
     }
 
     pub fn draw(&self, canvas: &mut Canvas<impl RenderTarget>, game: &Game) {
-        self.tetro_type.draw(canvas, self.cord.pos(game), self.rotation);
+        self.tetro_type.draw(canvas, self.cord.pos(game.game_pos), self.rotation);
     }
 }
 
@@ -183,15 +198,14 @@ pub struct Game {
 
 impl Game {
     pub fn new() -> Game {
-        let block_size = 20;
-        let game_pos = Pos(block_size as i32 * 6, block_size as i32);
+        let game_pos = Pos(BLOCK_SIZE as i32 * 6, BLOCK_SIZE as i32);
 
         let mut next_tetros = TetroType::random_set();
 
         Game {
             game_pos,
-            hold_screen_pos: Pos(block_size as i32, block_size as i32),
-            dropping_tetro: GameTetro::new(next_tetros.pop().unwrap(), Cord(4, 0), 0),
+            hold_screen_pos: Pos(BLOCK_SIZE as i32, BLOCK_SIZE as i32),
+            dropping_tetro: GameTetro::new(next_tetros.pop().unwrap(), Cord(2, 0), 0),
             hold_tetro: None,
             next_tetros,
             blocks: [None; 10 * 20]
@@ -200,15 +214,16 @@ impl Game {
 
     pub fn draw(&self, canvas: &mut Canvas<impl RenderTarget>) {
         canvas.set_draw_color(Color::RGB(0, 0, 0));
-        canvas.fill_rect(Rect::new(self.game_pos.0 - 4, self.game_pos.1 - 4, BLOCK_SIZE * 10 + 8, BLOCK_SIZE * 20 + 8)).unwrap();
+        canvas.fill_rect(Rect::new(self.game_pos.0 - 4, self.game_pos.1 - 4, BLOCK_SIZE * GAME_WIDTH + 8, BLOCK_SIZE * GAME_HEIGHT + 8)).unwrap();
 
         canvas.set_draw_color(Color::RGB(189, 195, 199));
-        canvas.fill_rect(Rect::new(self.game_pos.0, self.game_pos.1, BLOCK_SIZE * 10, BLOCK_SIZE * 20)).unwrap();
+        canvas.fill_rect(Rect::new(self.game_pos.0, self.game_pos.1, BLOCK_SIZE * GAME_WIDTH, BLOCK_SIZE * GAME_HEIGHT)).unwrap();
 
         let border_size = BLOCK_SIZE / 10;
 
         for (i, block) in self.blocks.iter().enumerate() {
-            let relative_pos = Pos(i as i32 % 10 * BLOCK_SIZE as i32, i as i32 / 10 * BLOCK_SIZE as i32);
+            let relative_cord = Cord(i as i32 % GAME_WIDTH as i32, i as i32 / GAME_WIDTH as i32);
+            let relative_pos = relative_cord.pos(self.game_pos);
 
             let mut block_colour = (Color::RGB(189, 195, 199), Color::RGB(181, 187, 191));
 
@@ -217,18 +232,37 @@ impl Game {
             }
 
             canvas.set_draw_color(block_colour.1);
-            canvas.fill_rect(Rect::new(self.game_pos.0 + relative_pos.0, self.game_pos.1 + relative_pos.1, BLOCK_SIZE, BLOCK_SIZE)).unwrap();
+            canvas.fill_rect(Rect::new(relative_pos.0, relative_pos.1, BLOCK_SIZE, BLOCK_SIZE)).unwrap();
 
             canvas.set_draw_color(block_colour.0);
-            canvas.fill_rect(Rect::new(self.game_pos.0 + relative_pos.0 + border_size as i32, self.game_pos.1 + relative_pos.1 + border_size as i32, BLOCK_SIZE - border_size * 2, BLOCK_SIZE - border_size * 2)).unwrap();
+            canvas.fill_rect(Rect::new(relative_pos.0 + border_size as i32, relative_pos.1 + border_size as i32, BLOCK_SIZE - border_size * 2, BLOCK_SIZE - border_size * 2)).unwrap();
         }
 
         self.dropping_tetro.draw(canvas, self);
     }
 
-    // pub fn petrify_tetro(&mut self, tetro: GameTetro) {
-    //     for (i, block) in tetro.tetro_type.shape(tetro.rotation).iter().enumerate() {
-    //
-    //     }
-    // }
+    pub fn next_tetro(&mut self) {
+        let tetro_type = self.next_tetros.pop().unwrap_or_else(|| {
+            if self.next_tetros.len() == 0 { self.next_tetros = TetroType::random_set() }
+            self.next_tetros.pop().unwrap()
+        });
+
+        self.dropping_tetro = GameTetro::new(tetro_type, Cord(0, 0), 0);
+    }
+
+    pub fn petrify_dropping_tetro(&mut self) {
+        let cord = self.dropping_tetro.cord;
+
+        let shape = self.dropping_tetro.tetro_type.shape(self.dropping_tetro.rotation);
+        let shape_size = self.dropping_tetro.tetro_type.shape_size();
+
+        for i in 0..shape_size * shape_size {
+            let bit = shape >> i & 1;
+            if bit == 0 { continue }
+
+            let relative_cord = Cord(i as i32 % shape_size as i32, i as i32 / shape_size as i32);
+
+            self.blocks[(cord.0 + relative_cord.0 + (cord.1 + relative_cord.1) * GAME_WIDTH as i32) as usize] = Some(self.dropping_tetro.tetro_type);
+        }
+    }
 }
