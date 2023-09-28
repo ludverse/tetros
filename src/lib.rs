@@ -66,7 +66,7 @@ impl TetroType {
         //};
 
         let mut shape: u16 = match self {
-            TetroType::I => 00000000011110000,
+            TetroType::I => 0b0000000011110000,
             TetroType::J => 0b000111001,
             TetroType::L => 0b000111100,
             TetroType::O => 0b1111,
