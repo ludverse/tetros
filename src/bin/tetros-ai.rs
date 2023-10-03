@@ -11,6 +11,9 @@ use tetris_rs::bot::{Bot, Weigths};
 fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
+    let ttf_context = sdl2::ttf::init().unwrap();
+
+    let font = ttf_context.load_font("DOS-font.ttf", 128).unwrap();
 
     let mut game = Game::new();
     let bot = Bot {
@@ -56,7 +59,7 @@ fn main() {
 
         canvas.clear();
 
-        game.draw(&mut canvas, false);
+        game.draw(&mut canvas, &font);
 
         canvas.set_draw_color(Color::RGB(52, 73, 94));
         canvas.present();

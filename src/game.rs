@@ -63,36 +63,54 @@ impl Game {
         self.last_drop_timing = Instant::now();
     }
 
+    pub fn what_is_the_next_tetro_type_comming_up(&self) -> TetroType {
+        self.next_tetros_sets[0].last().unwrap_or_else(|| {
+            self.next_tetros_sets[1].last().unwrap()
+        }).clone()
+    }
+
     pub fn draw(&self, canvas: &mut Canvas<Window>, font: &Font) {
         let texture_creator = canvas.texture_creator();
 
-        let surface = font
+        let hold_title = font
             .render("HOLD")
-            .blended(Color::RGBA(255, 0, 0, 255))
+            .blended(Color::RGB(189, 195, 199))
             .unwrap();
-        let texture = texture_creator
-            .create_texture_from_surface(&surface)
-            .unwrap();
+        let hold_title = texture_creator.create_texture_from_surface(&hold_title).unwrap();
 
-        canvas.copy(&texture, None, Some(Rect::new(20, 20, FONT_CHAR_WIDTH as u32 * 4, FONT_CHAR_HEIGHT as u32)));
+        let hold_title_rect = Rect::new(BLOCK_SIZE * 2, BLOCK_SIZE, FONT_CHAR_WIDTH as u32 * 4, FONT_CHAR_HEIGHT as u32);
+        canvas.copy(&hold_title, None, Some(hold_title_rect)).unwrap();
+
+        let hold_screen_pos = Pos(BLOCK_SIZE, BLOCK_SIZE * 2);
+        canvas.set_draw_color(Color::RGB(189, 195, 199));
+        canvas.fill_rect(Rect::new(hold_screen_pos.0, hold_screen_pos.1, BLOCK_SIZE as u32 * 4, BLOCK_SIZE as u32 * 4)).unwrap();
 
         if let Some(hold_piece) = self.hold_tetro {
-            let center_offset = (4 - hold_piece.shape_size()) as f64 / 2. * BLOCK_SIZE as f64;
-            let center_pos = Pos(HOLD_SCREEN_POS.0 + center_offset as i32, HOLD_SCREEN_POS.1 + center_offset as i32);
-            hold_piece.draw(canvas, center_pos, 0, false);
+            hold_piece.draw_centered(canvas, hold_screen_pos);
         }
 
-        canvas.set_draw_color(Color::RGB(0, 0, 0));
-        canvas.fill_rect(Rect::new(GAME_POS.0 - 4, GAME_POS.1 - 4, (BLOCK_SIZE * GAME_WIDTH + 8) as u32, (BLOCK_SIZE * GAME_HEIGHT + 8) as u32)).unwrap();
-
+        let next_screen_pos = Pos(BLOCK_SIZE, BLOCK_SIZE * 8);
         canvas.set_draw_color(Color::RGB(189, 195, 199));
-        canvas.fill_rect(Rect::new(GAME_POS.0, GAME_POS.1, (BLOCK_SIZE * GAME_WIDTH) as u32, (BLOCK_SIZE * GAME_HEIGHT) as u32)).unwrap();
+        canvas.fill_rect(Rect::new(next_screen_pos.0, next_screen_pos.1, BLOCK_SIZE as u32 * 4, BLOCK_SIZE as u32 * 4)).unwrap();
 
-        let border_size = BLOCK_SIZE / 10;
+        self.what_is_the_next_tetro_type_comming_up().draw_centered(canvas, next_screen_pos);
+
+        let next_title = font
+            .render("NEXT")
+            .blended(Color::RGB(189, 195, 199))
+            .unwrap();
+        let next_title = texture_creator.create_texture_from_surface(&next_title).unwrap();
+
+        let next_title_rect = Rect::new(BLOCK_SIZE * 2, BLOCK_SIZE * 7, FONT_CHAR_WIDTH as u32 * 4, FONT_CHAR_HEIGHT as u32);
+        canvas.copy(&next_title, None, Some(next_title_rect)).unwrap();
+
+        let game_border_rect = Rect::new(GAME_POS.0 - 4, GAME_POS.1 - 4, (BLOCK_SIZE * GAME_WIDTH + 8) as u32, (BLOCK_SIZE * GAME_HEIGHT + 8) as u32);
+        canvas.set_draw_color(Color::RGB(0, 0, 0));
+        canvas.fill_rect(game_border_rect).unwrap();
 
         for (i, block) in self.blocks.iter().enumerate() {
-            let relative_cord = Cord(i as i32 % GAME_WIDTH as i32, i as i32 / GAME_WIDTH as i32);
-            let relative_pos = relative_cord.pos();
+            let cord = Cord(i as i32 % GAME_WIDTH, i as i32 / GAME_WIDTH);
+            let pos = cord.pos();
 
             let mut block_colour = (Color::RGB(189, 195, 199), Color::RGB(181, 187, 191));
 
@@ -100,15 +118,19 @@ impl Game {
                 block_colour = block.colour();
             }
 
-            canvas.set_draw_color(block_colour.1);
-            canvas.fill_rect(Rect::new(relative_pos.0, relative_pos.1, BLOCK_SIZE as u32, BLOCK_SIZE as u32)).unwrap();
+            let border_size = BLOCK_SIZE / 10;
 
+            let block_border_rect = Rect::new(pos.0, pos.1, BLOCK_SIZE as u32, BLOCK_SIZE as u32);
+            canvas.set_draw_color(block_colour.1);
+            canvas.fill_rect(block_border_rect).unwrap();
+
+            let block_inner_rect = Rect::new(pos.0 + border_size, pos.1 + border_size, (BLOCK_SIZE - border_size * 2) as u32, (BLOCK_SIZE - border_size * 2) as u32);
             canvas.set_draw_color(block_colour.0);
-            canvas.fill_rect(Rect::new(relative_pos.0 + border_size as i32, relative_pos.1 + border_size as i32, (BLOCK_SIZE - border_size * 2) as u32, (BLOCK_SIZE - border_size * 2) as u32)).unwrap();
+            canvas.fill_rect(block_inner_rect).unwrap();
         }
 
         let mut ghost = self.dropping_tetro;
-        for i in self.dropping_tetro.cord.1..GAME_HEIGHT as i32 {
+        for i in self.dropping_tetro.cord.1..GAME_HEIGHT {
             ghost.cord.1 = i;
             if is_tetro_colliding(self.blocks, ghost) { break }
         }
@@ -128,10 +150,10 @@ pub fn petrify_tetro(blocks: &mut [Option<TetroType>; (GAME_WIDTH * GAME_HEIGHT)
         let bit = shape >> i & 1;
         if bit == 0 { continue }
 
-        let relative_cord = Cord(i as i32 % shape_size as i32, i as i32 / shape_size as i32);
+        let relative_cord = Cord(i as i32 % shape_size, i as i32 / shape_size);
         let cord = Cord(tetro.cord.0 + relative_cord.0, tetro.cord.1 + relative_cord.1);
 
-        blocks[(cord.0 + cord.1 * GAME_WIDTH as i32) as usize] = Some(tetro.tetro_type);
+        blocks[(cord.0 + cord.1 * GAME_WIDTH) as usize] = Some(tetro.tetro_type);
     }
 }
 
@@ -145,10 +167,10 @@ pub fn is_tetro_colliding(blocks: [Option<TetroType>; (GAME_WIDTH * GAME_HEIGHT)
         let bit = shape >> i & 1;
         if bit == 0 { continue }
 
-        let relative_cord = Cord(i as i32 % shape_size as i32, i as i32 / shape_size as i32);
+        let relative_cord = Cord(i as i32 % shape_size, i as i32 / shape_size);
         let cord = Cord(tetro.cord.0 + relative_cord.0, tetro.cord.1 + relative_cord.1);
 
-        let block = blocks[(cord.0 + cord.1 * GAME_WIDTH as i32) as usize];
+        let block = blocks[(cord.0 + cord.1 * GAME_WIDTH) as usize];
 
         if block.is_some() { return true }
     }

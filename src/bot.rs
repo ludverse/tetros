@@ -54,9 +54,7 @@ impl Bot {
                 if let Some(hold_tetro) = game.hold_tetro {
                     hold_tetro
                 } else {
-                    game.next_tetros_sets[0].last().unwrap_or_else(|| {
-                        game.next_tetros_sets[1].last().unwrap()
-                    }).clone()
+                    game.what_is_the_next_tetro_type_comming_up()
                 }
             } else {
                 game.dropping_tetro.tetro_type

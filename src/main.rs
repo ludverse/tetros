@@ -28,7 +28,7 @@ fn main() {
     let video_subsystem = sdl_context.video().unwrap();
     let ttf_context = sdl2::ttf::init().unwrap();
 
-    let mut font = ttf_context.load_font("DOS-font.ttf", 128).unwrap();
+    let font = ttf_context.load_font("DOS-font.ttf", 128).unwrap();
 
     let mut game = Game::new();
 
@@ -53,7 +53,7 @@ fn main() {
         canvas.present();
 
         for key in &keys_down {
-            if key.1.elapsed().as_millis() > 250 {
+            if key.1.elapsed().as_millis() > 300 {
                 Key::repeat_key(key.0, &mut game);
             }
         }

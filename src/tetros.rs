@@ -118,6 +118,13 @@ impl TetroType {
         }
     }
 
+    pub fn draw_centered(&self, canvas: &mut Canvas<impl RenderTarget>, origin_pos: Pos) {
+        let center_offset = (4 - self.shape_size()) as f64 / 2. * BLOCK_SIZE as f64;
+        let center_pos = Pos(origin_pos.0 + center_offset as i32, origin_pos.1 + center_offset as i32);
+
+        self.draw(canvas, center_pos, 0, false);
+    }
+
     pub fn random_tetro() -> TetroType {
         let mut rng = thread_rng();
 
