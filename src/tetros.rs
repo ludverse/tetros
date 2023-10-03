@@ -4,7 +4,7 @@ use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::{Canvas, RenderTarget};
 
-use crate::{Cord, Pos, Game, BLOCK_SIZE, GAME_HEIGHT, GAME_WIDTH};
+use crate::{Cord, Pos, BLOCK_SIZE, GAME_WIDTH};
 
 #[derive(Copy, Clone, Debug)]
 pub enum TetroType {
@@ -85,7 +85,11 @@ impl TetroType {
         }
     }
 
-    pub fn draw(&self, canvas: &mut Canvas<impl RenderTarget>, pos: Pos, rotation: usize) {
+    pub fn start_pos(&self) -> Cord {
+        Cord((GAME_WIDTH as i32 - self.shape_size()) / 2, 0 )
+    }
+
+    pub fn draw(&self, canvas: &mut Canvas<impl RenderTarget>, pos: Pos, rotation: usize, ghost: bool) {
         let shape = self.shape(rotation);
         let shape_size = self.shape_size();
 
@@ -93,30 +97,24 @@ impl TetroType {
 
         for i in 0..shape_size * shape_size {
             let bit = shape >> i & 1;
-            if bit == 0 {
-                continue;
-            }
+            if bit == 0 { continue; }
 
             let relative_cord = Cord(i as i32 % shape_size, i as i32 / shape_size);
             let pos = Pos(
-                pos.0 + relative_cord.0 * BLOCK_SIZE as i32,
-                pos.1 + relative_cord.1 * BLOCK_SIZE as i32,
+                pos.0 + relative_cord.0 * BLOCK_SIZE,
+                pos.1 + relative_cord.1 * BLOCK_SIZE,
             );
 
             canvas.set_draw_color(self.colour().1);
-            canvas
-                .fill_rect(Rect::new(pos.0, pos.1, BLOCK_SIZE, BLOCK_SIZE))
-                .unwrap();
+            canvas.fill_rect(Rect::new(pos.0, pos.1, BLOCK_SIZE as u32, BLOCK_SIZE as u32)).unwrap();
 
-            canvas.set_draw_color(self.colour().0);
-            canvas
-                .fill_rect(Rect::new(
-                    pos.0 + border_size as i32,
-                    pos.1 + border_size as i32,
-                    BLOCK_SIZE - border_size * 2,
-                    BLOCK_SIZE - border_size * 2,
-                ))
-                .unwrap();
+            if ghost {
+                canvas.set_draw_color(Color::RGB(189, 195, 199));
+            } else {
+                canvas.set_draw_color(self.colour().0);
+            }
+
+            canvas.fill_rect(Rect::new(pos.0 + border_size as i32, pos.1 + border_size as i32, (BLOCK_SIZE - border_size * 2) as u32, (BLOCK_SIZE - border_size * 2) as u32)).unwrap();
         }
     }
 
@@ -154,6 +152,7 @@ impl TetroType {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct GameTetro {
     pub tetro_type: TetroType,
     pub cord: Cord,
@@ -169,9 +168,8 @@ impl GameTetro {
         }
     }
 
-    pub fn draw(&self, canvas: &mut Canvas<impl RenderTarget>, game: &Game) {
-        self.tetro_type
-            .draw(canvas, self.cord.pos(game.game_pos), self.rotation);
+    pub fn draw(&self, canvas: &mut Canvas<impl RenderTarget>) {
+        self.tetro_type.draw(canvas, self.cord.pos(), self.rotation, false);
     }
 }
 
