@@ -52,37 +52,41 @@ impl Bot {
 
         for use_hold in 0..=1 {
             let use_hold = use_hold == 1;
-            let tetro_type = if use_hold {
-                if let Some(hold_tetro) = game.hold_tetro {
-                    hold_tetro
-                } else {
-                    game.get_next_tetro()
-                }
-            } else {
-                game.dropping_tetro.tetro_type
-            };
 
             for rotation in 0..4usize {
                 for x in -2..GAME_WIDTH as i32 {
-                    let mut dropped = GameTetro::new(tetro_type, Cord(x as i32, 0), rotation);
+                    let mut game = game.clone();
 
-                    let mut blocks = game.blocks;
+                    if use_hold {
+                        controls::hold_tetro(&mut game);
+                    }
 
-                    if game::is_tetro_colliding(blocks, dropped) { continue; }
+                    game.dropping_tetro.cord = Cord(x as i32, 0);
+                    game.dropping_tetro.rotation = rotation;
+
+                    if game::is_tetro_colliding(game.blocks, game.dropping_tetro) { continue; };
 
                     for y in 0..GAME_HEIGHT as i32 {
-                        dropped.cord.1 = y;
-                        if game::is_tetro_colliding(blocks, dropped) { break }
+                        game.dropping_tetro.cord.1 = y;
+                        if game::is_tetro_colliding(game.blocks, game.dropping_tetro) { break; };
                     }
-                    dropped.cord.1 -= 1;
+                    game.dropping_tetro.cord.1 -= 1;
 
-                    game::petrify_tetro(&mut blocks, dropped);
-                    let lines_cleared = game::clear_lines(&mut blocks);
+                    game::petrify_tetro(&mut game.blocks, game.dropping_tetro);
+                    let lines_cleared = game::clear_lines(&mut game.blocks);
 
-                    let move_score = self.fitness_function(blocks, lines_cleared);
-                    println!(" {} - hold: {}, x: {}, rot: {}", move_score, use_hold, x, rotation);
-                    if best_move.is_none() || move_score > best_move.unwrap().0 {
-                        best_move = Some((move_score, (use_hold, x as i32, rotation)));
+                    let game_score = self.fitness_function(game.blocks, lines_cleared);
+                    if depth == 0 {
+                        if best_move.is_none() || game_score > best_move.unwrap().0 {
+                            best_move = Some((game_score, (use_hold, x as i32, rotation)));
+                        }
+                    } else {
+                        let universe_score = self.alternate_universe(game, depth - 1);
+                        let game_score = universe_score.0 + game_score;
+
+                        if best_move.is_none() || game_score > best_move.unwrap().0 {
+                            best_move = Some((game_score, (use_hold, x as i32, rotation)));
+                        }
                     }
                 }
             }
@@ -92,7 +96,7 @@ impl Bot {
     }
 
     pub fn best_move(&self, game: &Game) -> Option<(bool, i32, usize)> {
-        let best_move = self.alternate_universe(game.clone(), 1);
+        let best_move = self.alternate_universe(game.clone(), self.depth);
 
         println!("SELECTED {} - hold: {}, x: {}, rot: {}", best_move.0, best_move.1.0, best_move.1.1, best_move.1.2);
 

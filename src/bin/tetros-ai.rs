@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use std::thread;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
@@ -20,8 +20,8 @@ fn main() {
         weights: Weigths {
             holes_penalty: 16000,
             bumpiness_penalty: 6,
-            height_penalty: 3,
-            line_clearing: [-40, -30, -20, 800]
+            height_penalty: 2,
+            line_clearing: [-90, -70, -50, 800]
         },
         depth: 1
     };
@@ -36,21 +36,28 @@ fn main() {
 
     let mut next_move: Option<(bool, i32, usize)> = None;
 
+    let mut slow = false;
+
     'running: loop {
         game.next_frame();
 
         if let Some(next_move_unwrapped) = next_move {
             let rotate_times = next_move_unwrapped.2 as i32 - game.dropping_tetro.rotation as i32;
             let shift_amount = next_move_unwrapped.1 - game.dropping_tetro.cord.0;
-            if shift_amount != 0 {
-                controls::shift_tetro(&mut game, if shift_amount.is_positive() { 1 } else { -1 });
-            }
-            if rotate_times != 0 {
-                controls::rotate_tetro(&mut game, rotate_times)
-            } 
+
             if shift_amount == 0 && rotate_times == 0 {
                 controls::hard_drop(&mut game);
+                if slow { thread::sleep(Duration::from_millis(500)); };
                 next_move = None;
+            } else {
+                if shift_amount != 0 {
+                    controls::shift_tetro(&mut game, if shift_amount.is_positive() { 1 } else { -1 });
+                }
+                if rotate_times != 0 {
+                    controls::rotate_tetro(&mut game, rotate_times)
+                } 
+
+                if slow { thread::sleep(Duration::from_millis(35)); };
             }
         } else {
             next_move = Some(bot.best_move(&game).unwrap());
@@ -73,7 +80,11 @@ fn main() {
                 Event::KeyDown { keycode: Some(keycode), .. } => {
                     match keycode {
                         Keycode::Space => {
-                        }
+                            slow = true
+                        },
+                        Keycode::A => {
+                            slow = false
+                        },
                         _ => ()
                     }
                 },
