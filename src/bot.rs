@@ -1,4 +1,4 @@
-use crate::{Cord, GAME_WIDTH, GAME_HEIGHT};
+use crate::{Cord, GAME_WIDTH, GAME_HEIGHT, controls};
 use crate::game::{self, Game};
 use crate::tetros::{TetroType, GameTetro};
 
@@ -10,7 +10,8 @@ pub struct Weigths {
 }
 
 pub struct Bot {
-    pub weights: Weigths
+    pub weights: Weigths,
+    pub depth: usize
 }
 
 impl Bot {
@@ -43,18 +44,19 @@ impl Bot {
         -holes_amount * self.weights.holes_penalty +
         -bumpiness * self.weights.bumpiness_penalty +
         -height_penalty * self.weights.height_penalty + 
-        if lines_cleared != 0 { lines_cleared as i32 * self.weights.line_clearing[lines_cleared - 1] } else { 0 }
+        if lines_cleared != 0 { self.weights.line_clearing[lines_cleared - 1] } else { 0 }
     }
 
-    pub fn best_move(&self, game: &Game) -> Option<(bool, i32, usize)> {
+    fn alternate_universe(&self, mut game: Game, depth: usize) -> (i32, (bool, i32, usize)) {
         let mut best_move: Option<(i32, (bool, i32, usize))> = None;
 
-        let mut best_move_for_tetro = |use_hold| {
+        for use_hold in 0..=1 {
+            let use_hold = use_hold == 1;
             let tetro_type = if use_hold {
                 if let Some(hold_tetro) = game.hold_tetro {
                     hold_tetro
                 } else {
-                    game.what_is_the_next_tetro_type_comming_up()
+                    game.get_next_tetro()
                 }
             } else {
                 game.dropping_tetro.tetro_type
@@ -77,7 +79,6 @@ impl Bot {
                     game::petrify_tetro(&mut blocks, dropped);
                     let lines_cleared = game::clear_lines(&mut blocks);
 
-
                     let move_score = self.fitness_function(blocks, lines_cleared);
                     println!(" {} - hold: {}, x: {}, rot: {}", move_score, use_hold, x, rotation);
                     if best_move.is_none() || move_score > best_move.unwrap().0 {
@@ -85,13 +86,16 @@ impl Bot {
                     }
                 }
             }
-        };
+        }
 
-        best_move_for_tetro(false);
-        best_move_for_tetro(true);
+        best_move.unwrap()
+    }
 
-        println!("SELECTED {} - hold: {}, x: {}, rot: {}", best_move?.0, best_move?.1.0, best_move?.1.1, best_move?.1.2);
+    pub fn best_move(&self, game: &Game) -> Option<(bool, i32, usize)> {
+        let best_move = self.alternate_universe(game.clone(), 1);
 
-        Some(best_move?.1)
+        println!("SELECTED {} - hold: {}, x: {}, rot: {}", best_move.0, best_move.1.0, best_move.1.1, best_move.1.2);
+
+        Some(best_move.1)
     }
 }

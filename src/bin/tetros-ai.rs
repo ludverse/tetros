@@ -3,10 +3,10 @@ use std::thread;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use tetris_rs::BLOCK_SIZE;
-use tetris_rs::game::Game;
-use tetris_rs::controls;
-use tetris_rs::bot::{Bot, Weigths};
+use tetros_rs::BLOCK_SIZE;
+use tetros_rs::game::Game;
+use tetros_rs::controls;
+use tetros_rs::bot::{Bot, Weigths};
 
 fn main() {
     let sdl_context = sdl2::init().unwrap();
@@ -15,14 +15,15 @@ fn main() {
 
     let font = ttf_context.load_font("DOS-font.ttf", 128).unwrap();
 
-    let mut game = Game::new();
+    let mut game = Game::new(&font);
     let bot = Bot {
         weights: Weigths {
             holes_penalty: 16000,
-            bumpiness_penalty: 2,
-            height_penalty: 1,
-            line_clearing: [1, 1, 1, 8]
-        }
+            bumpiness_penalty: 6,
+            height_penalty: 3,
+            line_clearing: [-40, -30, -20, 800]
+        },
+        depth: 1
     };
 
     let window = video_subsystem.window("Tetros", BLOCK_SIZE as u32 * 17, BLOCK_SIZE as u32 * 22)
@@ -59,7 +60,7 @@ fn main() {
 
         canvas.clear();
 
-        game.draw(&mut canvas, &font);
+        game.draw(&mut canvas);
 
         canvas.set_draw_color(Color::RGB(52, 73, 94));
         canvas.present();

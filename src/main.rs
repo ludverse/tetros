@@ -4,9 +4,9 @@ use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use tetris_rs::BLOCK_SIZE;
-use tetris_rs::game::Game;
-use tetris_rs::controls;
+use tetros_rs::BLOCK_SIZE;
+use tetros_rs::game::Game;
+use tetros_rs::controls;
 
 #[derive(Copy, Clone, Debug)]
 struct Key(Keycode, Instant);
@@ -30,7 +30,7 @@ fn main() {
 
     let font = ttf_context.load_font("DOS-font.ttf", 128).unwrap();
 
-    let mut game = Game::new();
+    let mut game = Game::new(&font);
 
     let window = video_subsystem.window("Tetros", BLOCK_SIZE as u32 * 17, BLOCK_SIZE as u32 * 22)
         .build()
@@ -47,7 +47,7 @@ fn main() {
 
         canvas.clear();
 
-        game.draw(&mut canvas, &font);
+        game.draw(&mut canvas);
 
         canvas.set_draw_color(Color::RGB(52, 73, 94));
         canvas.present();
@@ -70,7 +70,7 @@ fn main() {
                         match keycode {
                             Keycode::S => game.is_soft_dropping = true,
                             Keycode::Return => controls::hard_drop(&mut game),
-                            Keycode::C => controls::hold_tetro(&mut game),
+                            Keycode::F => controls::hold_tetro(&mut game),
                             _ => Key::repeat_key(keycode, &mut game)
                         }
 

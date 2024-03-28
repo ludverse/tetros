@@ -23,14 +23,21 @@ pub fn rotate_tetro(game: &mut Game, rotate_times: i32) {
 
 pub fn hard_drop(game: &mut Game) {
     let mut next = game.dropping_tetro;
+
+    let mut cells_dropped = 0;
     for i in game.dropping_tetro.cord.1..GAME_HEIGHT as i32 {
         next.cord.1 = i;
         if game::is_tetro_colliding(game.blocks, next) { break }
+
+        cells_dropped += 1;
     }
     next.cord.1 -= 1;
 
+    game.score += cells_dropped * 2;
+
     game::petrify_tetro(&mut game.blocks, next);
-    game::clear_lines(&mut game.blocks);
+    let lines_cleared = game::clear_lines(&mut game.blocks);
+    game.add_lines_cleared(lines_cleared);
 
     game.next_tetro();
 }
