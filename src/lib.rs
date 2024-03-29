@@ -12,7 +12,7 @@ pub const GAME_WIDTH: i32 = 10;
 pub const GAME_HEIGHT: i32 = 20;
 pub const FONT_CHAR_WIDTH: i32 = BLOCK_SIZE / 2;
 pub const FONT_CHAR_HEIGHT: i32 = BLOCK_SIZE;
-
+pub const TETRO_TYPES_AMOUNT: usize = 7;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Cord(pub i32, pub i32);

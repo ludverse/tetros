@@ -1,77 +1,83 @@
-use std::time::Instant;
+use std::time::{Instant, Duration};
 
-use crate::{Cord, GAME_WIDTH, GAME_HEIGHT};
+use crate::{Cord, TETRO_TYPES_AMOUNT, GAME_WIDTH, GAME_HEIGHT};
 use crate::tetros::{GameTetro, TetroType};
 
 #[derive(Clone)]
 pub struct Game {
     pub lines: i32,
     pub score: i32,
-    pub next_tetros_sets: Vec<Vec<TetroType>>,
+    pub tetro_queue: Vec<TetroType>,
     pub dropping_tetro: GameTetro,
     pub hold_tetro: Option<TetroType>,
     pub blocks: [Option<TetroType>; (GAME_WIDTH * GAME_HEIGHT) as usize],
     pub is_soft_dropping: bool,
-    pub last_drop_timing: Instant
+    pub last_drop_timing: Instant,
+    pub lock_delay: Instant
 }
 
 impl Game {
     pub fn new() -> Self {
-        let mut next_tetros_sets = vec![TetroType::random_set(), TetroType::random_set()];
-        let dropping_tetro_type = next_tetros_sets[0].pop().unwrap();
+        let mut tetro_queue = TetroType::random_set();
+        tetro_queue.append(&mut TetroType::random_set());
+        let dropping_tetro_type = tetro_queue.pop().unwrap();
 
         Self {
             lines: 0,
             score: 0,
             dropping_tetro: GameTetro::new(dropping_tetro_type, dropping_tetro_type.start_pos(), 0),
-            next_tetros_sets,
+            tetro_queue,
             hold_tetro: None,
             blocks: [None; 10 * 20],
             is_soft_dropping: false,
             last_drop_timing: Instant::now(),
+            lock_delay: Instant::now()
         }
     }
 
     pub fn next_frame(&mut self) {
-        let now = Instant::now();
-        let drop_delta = now - self.last_drop_timing;
+        let drop_delta = self.last_drop_timing.elapsed();
 
-        if drop_delta.as_millis() > (if self.is_soft_dropping { 50 } else { 750 }) {
-            let mut next = self.dropping_tetro;
-            next.cord.1 += 1;
+        let mut next = self.dropping_tetro;
+        next.cord.1 += 1;
 
-            if self.is_soft_dropping { self.score += 1; };
-
-            if is_tetro_colliding(self.blocks, next) {
+        if is_tetro_colliding(self.blocks, next) {
+            if self.lock_delay.elapsed() > Duration::from_millis(500) {
                 petrify_tetro(&mut self.blocks, self.dropping_tetro);
 
                 let lines_cleared = clear_lines(&mut self.blocks);
                 self.add_lines_cleared(lines_cleared);
 
                 self.next_tetro();
-            } else {
-                self.dropping_tetro = next;
-            }
 
-            self.last_drop_timing = Instant::now();
+                self.last_drop_timing = Instant::now();
+                self.lock_delay = Instant::now();
+            }
+        } else {
+            if drop_delta > Duration::from_millis(if self.is_soft_dropping { 50 } else { 750 }) {
+                self.dropping_tetro = next;
+
+                if self.is_soft_dropping { self.score += 1; };
+
+                self.last_drop_timing = Instant::now();
+                self.lock_delay = Instant::now();
+            }
         }
     }
 
     pub fn next_tetro(&mut self) {
-        let tetro_type = self.next_tetros_sets[0].pop().unwrap_or_else(|| {
-            self.next_tetros_sets.remove(0);
-            self.next_tetros_sets.push(TetroType::random_set());
-            self.next_tetros_sets[0].pop().unwrap()
-        });
+        let tetro_type = self.tetro_queue.pop().unwrap();
+
+        if self.tetro_queue.len() < TETRO_TYPES_AMOUNT {
+            self.tetro_queue.append(&mut TetroType::random_set());
+        }
 
         self.dropping_tetro = GameTetro::new(tetro_type, tetro_type.start_pos(), 0);
         self.last_drop_timing = Instant::now();
     }
 
     pub fn get_next_tetro(&self) -> TetroType {
-        self.next_tetros_sets[0].last().unwrap_or_else(|| {
-            self.next_tetros_sets[1].last().unwrap()
-        }).clone()
+        *self.tetro_queue.last().unwrap()
     }
 
     pub fn add_lines_cleared(&mut self, lines_cleared: usize) {

@@ -11,7 +11,6 @@ use crate::tetros::TetroType;
 
 pub struct GUI<'ttf> {
     pub sdl_context: Sdl,
-    ttf_context: &'ttf Sdl2TtfContext,
     pub canvas: Canvas<Window>,
     pub font: Font<'ttf, 'static>,
     pub game: Game
@@ -29,11 +28,10 @@ impl<'ttf> GUI<'ttf> {
         let font = ttf_context.load_font("DOS-font.ttf", 128).unwrap();
 
         let window = video_subsystem.window(window_title, BLOCK_SIZE as u32 * 17, BLOCK_SIZE as u32 * 22).build().unwrap();
-        let mut canvas = window.into_canvas().build().unwrap();
+        let canvas = window.into_canvas().build().unwrap();
 
         Self {
             sdl_context,
-            ttf_context,
             canvas,
             font,
             game

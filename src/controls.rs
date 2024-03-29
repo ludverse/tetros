@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Instant, Duration};
 use crate::{Cord, BLOCK_SIZE, GAME_POS, GAME_WIDTH, GAME_HEIGHT};
 use crate::game::{self, Game};
 use crate::tetros::GameTetro;
@@ -9,6 +9,14 @@ pub fn shift_tetro(game: &mut Game, x_amount: i32) {
 
     if !game::is_tetro_colliding(game.blocks, next) {
         game.dropping_tetro = next;
+
+        let mut lock_next = game.dropping_tetro;
+        lock_next.cord.1 += 1;
+
+        if game::is_tetro_colliding(game.blocks, lock_next) {
+            game.lock_delay = Instant::now();
+            game.last_drop_timing = Instant::now();
+        }
     }
 }
 
@@ -18,6 +26,14 @@ pub fn rotate_tetro(game: &mut Game, rotate_times: i32) {
 
     if !game::is_tetro_colliding(game.blocks, next) {
         game.dropping_tetro = next;
+
+        let mut lock_next = game.dropping_tetro;
+        lock_next.cord.1 += 1;
+
+        if game::is_tetro_colliding(game.blocks, lock_next) {
+            game.lock_delay = Instant::now();
+            game.last_drop_timing = Instant::now();
+        }
     }
 }
 
