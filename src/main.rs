@@ -3,10 +3,9 @@ use std::thread;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use tetros_rs::BLOCK_SIZE;
-use tetros_rs::game::Game;
-use tetros_rs::controls;
-use tetros_rs::gui::GUI;
+use tetros::game::Game;
+use tetros::controls;
+use tetros::gui::GUI;
 
 #[derive(Copy, Clone, Debug)]
 struct Key(Keycode, Instant);

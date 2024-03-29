@@ -1,8 +1,8 @@
 [package]
-name = "tetros-rs"
+name = "tetros"
 version = "0.1.0"
 edition = "2021"
-default-run = "tetros-rs"
+default-run = "tetros"
 
 [[bin]]
 name = "tetros-ai"
