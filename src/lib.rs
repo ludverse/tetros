@@ -1,12 +1,7 @@
-use std::time::Instant;
-use sdl2::rect::Rect;
-use sdl2::pixels::Color;
-use sdl2::render::Canvas;
-use sdl2::video::Window;
-
 use crate::tetros::TetroType;
 
 pub mod game;
+pub mod gui;
 pub mod tetros;
 pub mod controls;
 pub mod bot;
@@ -15,7 +10,6 @@ pub const BLOCK_SIZE: i32 = 30;
 pub const GAME_POS: Pos = Pos(6 * BLOCK_SIZE, 1 * BLOCK_SIZE);
 pub const GAME_WIDTH: i32 = 10;
 pub const GAME_HEIGHT: i32 = 20;
-pub const HOLD_SCREEN_POS: Pos = Pos(1 * BLOCK_SIZE, 1 * BLOCK_SIZE);
 pub const FONT_CHAR_WIDTH: i32 = BLOCK_SIZE / 2;
 pub const FONT_CHAR_HEIGHT: i32 = BLOCK_SIZE;
 

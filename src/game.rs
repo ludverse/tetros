@@ -1,16 +1,10 @@
 use std::time::Instant;
-use sdl2::rect::Rect;
-use sdl2::pixels::Color;
-use sdl2::render::Canvas;
-use sdl2::video::Window;
-use sdl2::ttf::Font;
 
-use crate::{Cord, Pos, BLOCK_SIZE, GAME_POS, GAME_WIDTH, GAME_HEIGHT, HOLD_SCREEN_POS, FONT_CHAR_WIDTH, FONT_CHAR_HEIGHT};
+use crate::{Cord, GAME_WIDTH, GAME_HEIGHT};
 use crate::tetros::{GameTetro, TetroType};
 
 #[derive(Clone)]
-pub struct Game<'ttf> {
-    font: &'ttf Font<'ttf, 'static>,
+pub struct Game {
     pub lines: i32,
     pub score: i32,
     pub next_tetros_sets: Vec<Vec<TetroType>>,
@@ -21,13 +15,12 @@ pub struct Game<'ttf> {
     pub last_drop_timing: Instant
 }
 
-impl<'ttf> Game<'ttf> {
-    pub fn new(font: &'ttf Font<'ttf, 'static>) -> Self {
+impl Game {
+    pub fn new() -> Self {
         let mut next_tetros_sets = vec![TetroType::random_set(), TetroType::random_set()];
         let dropping_tetro_type = next_tetros_sets[0].pop().unwrap();
 
         Self {
-            font,
             lines: 0,
             score: 0,
             dropping_tetro: GameTetro::new(dropping_tetro_type, dropping_tetro_type.start_pos(), 0),
@@ -94,85 +87,6 @@ impl<'ttf> Game<'ttf> {
 
         self.lines += lines_cleared as i32;
     }
-
-    pub fn draw(&self, canvas: &mut Canvas<Window>) {
-        draw_tetro_box(self.font, canvas, "HOLD", Pos(BLOCK_SIZE, BLOCK_SIZE * 2), self.hold_tetro);
-        draw_tetro_box(self.font, canvas, "NEXT", Pos(BLOCK_SIZE, BLOCK_SIZE * 8), Some(self.get_next_tetro()));
-
-        draw_value_display(self.font, canvas, "LEVEL", Pos(BLOCK_SIZE, BLOCK_SIZE * 16), self.lines / 10 + 1);
-        draw_value_display(self.font, canvas, "SCORE", Pos(BLOCK_SIZE, BLOCK_SIZE * 19), self.score);
-
-        let game_border_rect = Rect::new(GAME_POS.0 - 4, GAME_POS.1 - 4, (BLOCK_SIZE * GAME_WIDTH + 8) as u32, (BLOCK_SIZE * GAME_HEIGHT + 8) as u32);
-        canvas.set_draw_color(Color::RGB(0, 0, 0));
-        canvas.fill_rect(game_border_rect).unwrap();
-
-        for (i, block) in self.blocks.iter().enumerate() {
-            let cord = Cord(i as i32 % GAME_WIDTH, i as i32 / GAME_WIDTH);
-            let pos = cord.pos();
-
-            let mut block_colour = (Color::RGB(189, 195, 199), Color::RGB(181, 187, 191));
-
-            if let Some(block) = block {
-                block_colour = block.colour();
-            }
-
-            let border_size = BLOCK_SIZE / 10;
-
-            let block_border_rect = Rect::new(pos.0, pos.1, BLOCK_SIZE as u32, BLOCK_SIZE as u32);
-            canvas.set_draw_color(block_colour.1);
-            canvas.fill_rect(block_border_rect).unwrap();
-
-            let block_inner_rect = Rect::new(pos.0 + border_size, pos.1 + border_size, (BLOCK_SIZE - border_size * 2) as u32, (BLOCK_SIZE - border_size * 2) as u32);
-            canvas.set_draw_color(block_colour.0);
-            canvas.fill_rect(block_inner_rect).unwrap();
-        }
-
-        let mut ghost = self.dropping_tetro;
-        for i in self.dropping_tetro.cord.1..GAME_HEIGHT {
-            ghost.cord.1 = i;
-            if is_tetro_colliding(self.blocks, ghost) { break }
-        }
-        ghost.cord.1 -= 1;
-
-        self.dropping_tetro.tetro_type.draw(canvas, ghost.cord.pos(), self.dropping_tetro.rotation, true);
-
-        self.dropping_tetro.draw(canvas);
-    }
-}
-
-fn draw_text(font: &Font, canvas: &mut Canvas<Window>, pos: Pos, text: &str) {
-    let texture_creator = canvas.texture_creator();
-
-    let surface = font
-        .render(text)
-        .blended(Color::RGB(189, 195, 199))
-        .unwrap();
-    let texture = texture_creator.create_texture_from_surface(&surface).unwrap();
-
-    let title_rect = Rect::new(pos.0, pos.1, FONT_CHAR_WIDTH as u32 * text.len() as u32, FONT_CHAR_HEIGHT as u32);
-    canvas.copy(&texture, None, Some(title_rect)).unwrap();
-}
-
-fn draw_tetro_box(font: &Font, canvas: &mut Canvas<Window>, box_title: &'static str, box_pos: Pos, tetro: Option<TetroType>) {
-    let mut title_pos = box_pos;
-    title_pos.1 -= BLOCK_SIZE;
-    draw_text(font, canvas, title_pos, box_title);
-
-    canvas.set_draw_color(Color::RGB(189, 195, 199));
-    canvas.fill_rect(Rect::new(box_pos.0, box_pos.1, BLOCK_SIZE as u32 * 4, BLOCK_SIZE as u32 * 4)).unwrap();
-
-    if let Some(tetro) = tetro {
-        tetro.draw_centered(canvas, box_pos);
-    }
-}
-
-fn draw_value_display(font: &Font, canvas: &mut Canvas<Window>, display_title: &'static str, display_pos: Pos, display_value: i32) {
-    draw_text(font, canvas, display_pos, display_title);
-
-    let mut value_pos = display_pos;
-    value_pos.1 += BLOCK_SIZE;
-
-    draw_text(font, canvas, value_pos, display_value.to_string().as_str());
 }
 
 pub fn petrify_tetro(blocks: &mut [Option<TetroType>; (GAME_WIDTH * GAME_HEIGHT) as usize], tetro: GameTetro) {

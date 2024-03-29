@@ -1,7 +1,10 @@
+use std::time::Instant;
+
 use crate::{Cord, GAME_WIDTH, GAME_HEIGHT, controls};
 use crate::game::{self, Game};
 use crate::tetros::{TetroType, GameTetro};
 
+#[derive(Clone, Copy)]
 pub struct Weigths {
     pub holes_penalty: i32,
     pub bumpiness_penalty: i32,
@@ -9,6 +12,7 @@ pub struct Weigths {
     pub line_clearing: [i32; 4]
 }
 
+#[derive(Clone, Copy)]
 pub struct Bot {
     pub weights: Weigths,
     pub depth: usize
@@ -96,9 +100,18 @@ impl Bot {
     }
 
     pub fn best_move(&self, game: &Game) -> Option<(bool, i32, usize)> {
+        let started = Instant::now();
+
         let best_move = self.alternate_universe(game.clone(), self.depth);
 
-        println!("SELECTED {} - hold: {}, x: {}, rot: {}", best_move.0, best_move.1.0, best_move.1.1, best_move.1.2);
+        println!(
+            "SELECTED {} - hold: {}, x: {}, rot: {} - {} ms",
+            best_move.0,
+            best_move.1.0,
+            best_move.1.1,
+            best_move.1.2,
+            started.elapsed().as_millis()
+        );
 
         Some(best_move.1)
     }

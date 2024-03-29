@@ -1,12 +1,12 @@
 use std::time::{Duration, Instant};
 use std::thread;
-use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use tetros_rs::BLOCK_SIZE;
 use tetros_rs::game::Game;
 use tetros_rs::controls;
+use tetros_rs::gui::GUI;
 
 #[derive(Copy, Clone, Debug)]
 struct Key(Keycode, Instant);
@@ -24,40 +24,29 @@ impl Key {
 }
 
 fn main() {
-    let sdl_context = sdl2::init().unwrap();
-    let video_subsystem = sdl_context.video().unwrap();
-    let ttf_context = sdl2::ttf::init().unwrap();
-
-    let font = ttf_context.load_font("DOS-font.ttf", 128).unwrap();
-
-    let mut game = Game::new(&font);
-
-    let window = video_subsystem.window("Tetros", BLOCK_SIZE as u32 * 17, BLOCK_SIZE as u32 * 22)
-        .build()
-        .unwrap();
-
-    let mut canvas = window.into_canvas().build().unwrap();
-
-    let mut event_pump = sdl_context.event_pump().unwrap();
+    let game = Game::new();
+    let self_referential = GUI::build_self_referential();
+    let mut gui = GUI::build(&self_referential, game, "Tetros");
 
     let mut keys_down: Vec<Key> = vec![];
 
     'running: loop {
-        game.next_frame();
+        gui.game.next_frame();
 
-        canvas.clear();
+        gui.canvas.clear();
 
-        game.draw(&mut canvas);
+        gui.draw();
 
-        canvas.set_draw_color(Color::RGB(52, 73, 94));
-        canvas.present();
+        gui.canvas.set_draw_color(Color::RGB(52, 73, 94));
+        gui.canvas.present();
 
         for key in &keys_down {
             if key.1.elapsed().as_millis() > 300 {
-                Key::repeat_key(key.0, &mut game);
+                Key::repeat_key(key.0, &mut gui.game);
             }
         }
 
+        let mut event_pump = gui.sdl_context.event_pump().unwrap();
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit {..} => {
@@ -68,10 +57,10 @@ fn main() {
                         keys_down.push(Key(keycode, Instant::now()));
 
                         match keycode {
-                            Keycode::S => game.is_soft_dropping = true,
-                            Keycode::Return => controls::hard_drop(&mut game),
-                            Keycode::F => controls::hold_tetro(&mut game),
-                            _ => Key::repeat_key(keycode, &mut game)
+                            Keycode::S => gui.game.is_soft_dropping = true,
+                            Keycode::Return => controls::hard_drop(&mut gui.game),
+                            Keycode::F => controls::hold_tetro(&mut gui.game),
+                            _ => Key::repeat_key(keycode, &mut gui.game)
                         }
 
                     }
@@ -80,7 +69,7 @@ fn main() {
                     keys_down.retain(|key| key.0 != keycode);
 
                     match keycode {
-                        Keycode::S => game.is_soft_dropping = false,
+                        Keycode::S => gui.game.is_soft_dropping = false,
                         _ => ()
                     }
                 },
