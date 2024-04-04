@@ -1,10 +1,17 @@
 use std::time::Instant;
 
-use crate::{Cord, GAME_WIDTH, GAME_HEIGHT, controls};
-use crate::game::{self, Game};
-use crate::tetros::{TetroType, GameTetro};
+use rand::{thread_rng, Rng};
 
-#[derive(Clone, Copy)]
+use crate::{
+    GAME_WIDTH,
+    GAME_HEIGHT,
+    controls,
+    game::{self, Game},
+    tetros::{TetroType, GameTetro},
+    serializer::show_debug_game
+};
+
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Weigths {
     pub holes_penalty: i32,
     pub bumpiness_penalty: i32,
@@ -12,7 +19,27 @@ pub struct Weigths {
     pub line_clearing: [i32; 4]
 }
 
-#[derive(Clone, Copy)]
+impl Weigths {
+    pub fn mutate(&self, diff: i32) -> Self {
+        let mut rng = thread_rng();
+
+        let mut mutate_num = |diff_multiplier, value| rng.gen_range(value - diff * diff_multiplier..value + diff * diff_multiplier);
+
+        Self {
+            holes_penalty: mutate_num(1, self.holes_penalty),
+            bumpiness_penalty: mutate_num(1, self.holes_penalty),
+            height_penalty: mutate_num(1, self.holes_penalty),
+            line_clearing: [
+                mutate_num(4, self.line_clearing[0]),
+                mutate_num(4, self.line_clearing[1]),
+                mutate_num(4, self.line_clearing[2]),
+                mutate_num(4, self.line_clearing[3])
+            ]
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct Bot {
     pub weights: Weigths,
     pub depth: usize
@@ -61,17 +88,16 @@ impl Bot {
                 for x in -2..GAME_WIDTH as i32 {
                     let mut game = game.clone();
 
-                    if use_hold {
-                        controls::hold_tetro(&mut game);
-                    }
+                    if use_hold { controls::hold_tetro(&mut game); };
 
-                    game.dropping_tetro.cord = Cord(x as i32, 0);
+                    game.dropping_tetro.cord = game.dropping_tetro.tetro_type.start_pos();
+                    game.dropping_tetro.cord.0 = x;
                     game.dropping_tetro.rotation = rotation;
 
                     if game::is_tetro_colliding(game.blocks, game.dropping_tetro) { continue; };
 
-                    for y in 0..GAME_HEIGHT as i32 {
-                        game.dropping_tetro.cord.1 = y;
+                    for _ in 0..GAME_HEIGHT as i32 {
+                        game.dropping_tetro.cord.1 += 1;
                         if game::is_tetro_colliding(game.blocks, game.dropping_tetro) { break; };
                     }
                     game.dropping_tetro.cord.1 -= 1;
@@ -79,8 +105,10 @@ impl Bot {
                     game::petrify_tetro(&mut game.blocks, game.dropping_tetro);
                     let lines_cleared = game::clear_lines(&mut game.blocks);
 
+                    game.next_tetro();
+
                     let game_score = self.fitness_function(game.blocks, lines_cleared);
-                    if depth == 0 {
+                    if depth == 0 || !game.is_playing {
                         if best_move.is_none() || game_score > best_move.unwrap().0 {
                             best_move = Some((game_score, (use_hold, x as i32, rotation)));
                         }
@@ -96,23 +124,39 @@ impl Bot {
             }
         }
 
+        if best_move.is_none() {
+            dbg!(depth);
+            dbg!(game.blocks, game.dropping_tetro);
+
+            show_debug_game(&game);
+        }
+
         best_move.unwrap()
     }
 
     pub fn best_move(&self, game: &Game) -> Option<(bool, i32, usize)> {
-        let started = Instant::now();
+        // let started = Instant::now();
 
         let best_move = self.alternate_universe(game.clone(), self.depth);
 
-        println!(
-            "SELECTED {} - hold: {}, x: {}, rot: {} - {} ms",
-            best_move.0,
-            best_move.1.0,
-            best_move.1.1,
-            best_move.1.2,
-            started.elapsed().as_millis()
-        );
+        // println!(
+        //     "SELECTED {} - hold: {}, x: {}, rot: {} - {} ms",
+        //     best_move.0,
+        //     best_move.1.0,
+        //     best_move.1.1,
+        //     best_move.1.2,
+        //     started.elapsed().as_millis()
+        // );
 
         Some(best_move.1)
+    }
+}
+
+impl Default for Bot {
+    fn default() -> Self {
+        Self {
+            weights: Weigths::default(),
+            depth: 1
+        }
     }
 }

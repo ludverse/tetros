@@ -11,8 +11,10 @@ use tetros::gui::GUI;
 
 fn main() {
     let game = Game::new();
-    let self_referential = GUI::build_self_referential();
-    let mut gui = GUI::build(&self_referential, game, "Tetros");
+
+    let sdl_context = sdl2::init().unwrap();
+    let ttf_context = sdl2::ttf::init().unwrap();
+    let mut gui = GUI::build(&sdl_context, &ttf_context, game, "Tetros AI (evaluation)");
 
     let bot = Bot {
         weights: Weigths {
@@ -54,7 +56,7 @@ fn main() {
 
                 if shift_amount == 0 && rotate_times == 0 {
                     controls::hard_drop(&mut gui.game);
-                    if slow { thread::sleep(Duration::from_millis(500)); };
+                    if slow { thread::sleep(Duration::from_millis(750)); };
                     *next_move = None;
                 } else {
                     if shift_amount != 0 {

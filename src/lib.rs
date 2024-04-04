@@ -1,3 +1,5 @@
+use serde::{Serialize, Deserialize};
+
 use crate::tetros::TetroType;
 
 pub mod game;
@@ -5,6 +7,7 @@ pub mod gui;
 pub mod tetros;
 pub mod controls;
 pub mod bot;
+pub mod serializer;
 
 pub const BLOCK_SIZE: i32 = 30;
 pub const GAME_POS: Pos = Pos(6 * BLOCK_SIZE, 1 * BLOCK_SIZE);
@@ -14,7 +17,7 @@ pub const FONT_CHAR_WIDTH: i32 = BLOCK_SIZE / 2;
 pub const FONT_CHAR_HEIGHT: i32 = BLOCK_SIZE;
 pub const TETRO_TYPES_AMOUNT: usize = 7;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Cord(pub i32, pub i32);
 
 impl Cord {

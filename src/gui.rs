@@ -9,20 +9,15 @@ use crate::game::{self, Game};
 use crate::{Cord, Pos, BLOCK_SIZE, GAME_POS, GAME_WIDTH, GAME_HEIGHT, FONT_CHAR_WIDTH, FONT_CHAR_HEIGHT};
 use crate::tetros::TetroType;
 
-pub struct GUI<'ttf> {
-    pub sdl_context: Sdl,
+pub struct GUI<'a> {
+    pub sdl_context: &'a Sdl,
     pub canvas: Canvas<Window>,
-    pub font: Font<'ttf, 'static>,
+    pub font: Font<'a, 'static>,
     pub game: Game
 }
 
-impl<'ttf> GUI<'ttf> {
-    pub fn build_self_referential() -> Sdl2TtfContext {
-        sdl2::ttf::init().unwrap()
-    }
-
-    pub fn build(ttf_context: &'ttf Sdl2TtfContext, game: Game, window_title: &'static str) -> Self {
-        let sdl_context = sdl2::init().unwrap();
+impl<'a> GUI<'a> {
+    pub fn build(sdl_context: &'a Sdl, ttf_context: &'a Sdl2TtfContext, game: Game, window_title: &'static str) -> Self {
         let video_subsystem = sdl_context.video().unwrap();
 
         let font = ttf_context.load_font("DOS-font.ttf", 128).unwrap();
@@ -70,16 +65,19 @@ impl<'ttf> GUI<'ttf> {
             self.canvas.fill_rect(block_inner_rect).unwrap();
         }
 
-        let mut ghost = self.game.dropping_tetro;
-        for i in self.game.dropping_tetro.cord.1..GAME_HEIGHT {
-            ghost.cord.1 = i;
-            if game::is_tetro_colliding(self.game.blocks, ghost) { break }
+        if self.game.is_playing {
+            let mut ghost = self.game.dropping_tetro;
+            for i in self.game.dropping_tetro.cord.1..GAME_HEIGHT {
+                ghost.cord.1 = i;
+                if game::is_tetro_colliding(self.game.blocks, ghost) { break }
+            }
+            ghost.cord.1 -= 1;
+
+            self.game.dropping_tetro.tetro_type.draw(&mut self.canvas, ghost.cord.pos(), self.game.dropping_tetro.rotation, true);
+            ghost.draw(&mut self.canvas, true);
         }
-        ghost.cord.1 -= 1;
 
-        self.game.dropping_tetro.tetro_type.draw(&mut self.canvas, ghost.cord.pos(), self.game.dropping_tetro.rotation, true);
-
-        self.game.dropping_tetro.draw(&mut self.canvas);
+        self.game.dropping_tetro.draw(&mut self.canvas, !self.game.is_playing);
     }
 
     fn draw_text(&mut self, pos: Pos, text: &str) {

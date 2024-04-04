@@ -3,10 +3,11 @@ use rand::{thread_rng, Rng};
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::{Canvas, RenderTarget};
+use serde::{Serialize, Deserialize};
 
 use crate::{Cord, Pos, BLOCK_SIZE, GAME_WIDTH};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum TetroType {
     I,
     J,
@@ -159,7 +160,7 @@ impl TetroType {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct GameTetro {
     pub tetro_type: TetroType,
     pub cord: Cord,
@@ -175,8 +176,8 @@ impl GameTetro {
         }
     }
 
-    pub fn draw(&self, canvas: &mut Canvas<impl RenderTarget>) {
-        self.tetro_type.draw(canvas, self.cord.pos(), self.rotation, false);
+    pub fn draw(&self, canvas: &mut Canvas<impl RenderTarget>, ghost: bool) {
+        self.tetro_type.draw(canvas, self.cord.pos(), self.rotation, ghost);
     }
 }
 

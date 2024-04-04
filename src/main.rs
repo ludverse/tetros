@@ -24,34 +24,38 @@ impl Key {
 
 fn main() {
     let game = Game::new();
-    let self_referential = GUI::build_self_referential();
-    let mut gui = GUI::build(&self_referential, game, "Tetros");
+
+    let sdl_context = sdl2::init().unwrap();
+    let ttf_context = sdl2::ttf::init().unwrap();
+    let mut gui = GUI::build(&sdl_context, &ttf_context, game, "Tetros");
+
+    let mut event_pump = gui.sdl_context.event_pump().unwrap();
 
     let mut keys_down: Vec<Key> = vec![];
 
     'running: loop {
-        gui.game.next_frame();
+        if gui.game.is_playing { gui.game.next_frame(); };
 
         gui.canvas.clear();
-
         gui.draw();
 
         gui.canvas.set_draw_color(Color::RGB(52, 73, 94));
         gui.canvas.present();
 
         for key in &keys_down {
-            if key.1.elapsed().as_millis() > 300 {
+            if key.1.elapsed().as_millis() > 350 {
                 Key::repeat_key(key.0, &mut gui.game);
             }
         }
 
-        let mut event_pump = gui.sdl_context.event_pump().unwrap();
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit {..} => {
                     break 'running
                 },
-                Event::KeyDown { keycode: Some(keycode), .. } => {
+                Event::KeyDown { keycode: Some(keycode), .. }
+                    if gui.game.is_playing => {
+
                     if keys_down.iter().position(|key| key.0 == keycode).is_none() {
                         keys_down.push(Key(keycode, Instant::now()));
 

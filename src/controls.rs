@@ -41,9 +41,9 @@ pub fn hard_drop(game: &mut Game) {
     let mut next = game.dropping_tetro;
 
     let mut cells_dropped = 0;
-    for i in game.dropping_tetro.cord.1..GAME_HEIGHT as i32 {
-        next.cord.1 = i;
-        if game::is_tetro_colliding(game.blocks, next) { break }
+    for _ in game.dropping_tetro.cord.1..GAME_HEIGHT as i32 {
+        next.cord.1 += 1;
+        if game::is_tetro_colliding(game.blocks, next) { break; };
 
         cells_dropped += 1;
     }

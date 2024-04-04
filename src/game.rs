@@ -13,7 +13,8 @@ pub struct Game {
     pub blocks: [Option<TetroType>; (GAME_WIDTH * GAME_HEIGHT) as usize],
     pub is_soft_dropping: bool,
     pub last_drop_timing: Instant,
-    pub lock_delay: Instant
+    pub lock_delay: Instant,
+    pub is_playing: bool
 }
 
 impl Game {
@@ -28,10 +29,11 @@ impl Game {
             dropping_tetro: GameTetro::new(dropping_tetro_type, dropping_tetro_type.start_pos(), 0),
             tetro_queue,
             hold_tetro: None,
-            blocks: [None; 10 * 20],
+            blocks: [None; (GAME_WIDTH * GAME_HEIGHT) as usize],
             is_soft_dropping: false,
             last_drop_timing: Instant::now(),
-            lock_delay: Instant::now()
+            lock_delay: Instant::now(),
+            is_playing: true
         }
     }
 
@@ -72,8 +74,14 @@ impl Game {
             self.tetro_queue.append(&mut TetroType::random_set());
         }
 
-        self.dropping_tetro = GameTetro::new(tetro_type, tetro_type.start_pos(), 0);
+        let next = GameTetro::new(tetro_type, tetro_type.start_pos(), 0);
+
+        self.dropping_tetro = next;
         self.last_drop_timing = Instant::now();
+
+        if is_tetro_colliding(self.blocks, next) {
+            self.is_playing = false;
+        }
     }
 
     pub fn get_next_tetro(&self) -> TetroType {
@@ -106,6 +114,12 @@ pub fn petrify_tetro(blocks: &mut [Option<TetroType>; (GAME_WIDTH * GAME_HEIGHT)
         let relative_cord = Cord(i as i32 % shape_size, i as i32 / shape_size);
         let cord = Cord(tetro.cord.0 + relative_cord.0, tetro.cord.1 + relative_cord.1);
 
+        if (cord.0 + cord.1 * GAME_WIDTH) as usize > 201 {
+            dbg!(cord);
+            dbg!(tetro);
+            dbg!("petrifying tetro outside");
+        }
+
         blocks[(cord.0 + cord.1 * GAME_WIDTH) as usize] = Some(tetro.tetro_type);
     }
 }
@@ -123,9 +137,15 @@ pub fn is_tetro_colliding(blocks: [Option<TetroType>; (GAME_WIDTH * GAME_HEIGHT)
         let relative_cord = Cord(i as i32 % shape_size, i as i32 / shape_size);
         let cord = Cord(tetro.cord.0 + relative_cord.0, tetro.cord.1 + relative_cord.1);
 
+        if (cord.0 + cord.1 * GAME_WIDTH) as usize > 201 {
+            dbg!(cord);
+            dbg!(tetro);
+            dbg!("collision detection outside");
+        }
+
         let block = blocks[(cord.0 + cord.1 * GAME_WIDTH) as usize];
 
-        if block.is_some() { return true }
+        if block.is_some() { return true; };
     }
 
     false
