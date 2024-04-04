@@ -2,9 +2,6 @@
 
 very original game not plagarism i swear
 
-## Bugs
+## DOS font
 
-Maybe
-
-- Uhh bot cannot place blocks in the left most column sometimes
-- clear_lines lämmnar ibland kvar block i luften vilket betyder att nåt är fel i funktionen
+The DOS-font.ttf in the repository was made by Zeh Fernando (<https://www.dafont.com/perfect-dos-vga-437.font>) to be used for free by anyone! Hugely appreciated! Thanks, Zeh
